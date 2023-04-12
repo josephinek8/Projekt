@@ -1,0 +1,198 @@
+---
+title: "SFC"
+author: "Josephine Kærsgaard"
+date: "2023-04-12"
+output: word_document
+---
+```{r}
+library(sfcr)
+library(tidyverse)
+library(tidygraph)
+
+#Step 1: Write the balance sheet matrix
+
+bs_pension <- sfcr_matrix(
+  columns = c("Active Households", "Passive Households", "Production", "Government", "Central Bank"),
+  code = c("ah","ph", "p", "g", "cb"),
+  c("Money", ah = "+M_ah", ph="+M_ph", cb = "-Ms"),
+  c("Loans", g = "-Lg", cb ="+L"), # Spørg Sebastian, om virksomhederne også skal kunne optage lån til investeringer. I så fald: skal fixed capital med?
+  c("Public pension wealth", ph="+P", g = "-P"),
+  c("Wealth", ah = "-V_ah", ph="-V_ph", g = "+V")
+)
+
+sfcr_matrix_display(bs_pension)
+# We check the consistency of the model using the balance sheet
+
+
+#Step 2_ Write the TFM
+
+tfm_pension <- sfcr_matrix(
+  columns = c("Active Households", "Passive Households", "Production", "Government", "Central Bank (current)", "Central Bank (capital)"),
+  codes = c("ah", "ph", "p", "g", "cbc", "cbk"),
+  c("Consumption", ah = "-C_ah", ph="-C_ph", p = "C"),
+  c("Government Expenditure", p = "G", g = "-G"),
+  c("Income = GDP", p = "[Y]"),
+  c("Wage", ah = "+W", p = "-W"),
+  #c("Interest Payments Money", ah = "r[-1]*Hh_ah[-1]", ph = "r[-1]*Hh_ph[-1] ",cbc = "-r[-1]*Hs[-1]"),. Er penge rentebærende?
+  c("Interest on Loans/Public Debt", g = "-r[-1]*L_g[-1]", cbc = "r[-1]*L[-1]"), #Spørg Sebastian
+  #c("CB Profits", g = "r[-1]*Bcb[-1]", cbc = "-r[-1]*Bcb[-1]"), Skal centralbanken tilbagebetale profit eller skal den uddeles til husholdningerne?
+  c("Pension payouts", ph = "+P", g = "-P"),
+  c("Taxes", ah = "-T_ah", ph = "-T_ph", g = "T"), #Find ud af betaling af skat for passive husholdninger.
+  c("Change in Money", ah = "-(M_ah - M_ah[-1])", ph = "-(M_ph - M_ph[-1])", cbk = "(Ms - Ms[-1])"),
+  c("Change in Loans/Public Debt", g = "(Lg - Lg[-1])", cbk = "-(L - L[-1])")
+)
+
+sfcr_matrix_display(tfm_pension)
+
+# Write the system of equations
+
+pension_eqs <- sfcr_set(
+  #Hvordan defineres aktive og passive husholdninger som andele af hele befolkningen???
+  Y ~ C + G,
+  Yd_ah ~ W - T_ah, #skal penge være rentebærende. Penge er her ikke inkluderet.
+  Yd_ph ~ P - T_pH, #Forskellige skatterater? eller skal en skattesats ganges på?
+  Yd ~ Yd_ah + Yd_ph,
+  W ~ Y,
+  P ~ tau * G,
+  T_ah ~ theta * (W + r[-1]*M_ah[-1]), #er penge rentebærende?
+  T_ph ~ omega * P #spørg
+  T ~ T_ah + T_ph,
+  V_ah ~ V_ah[-1] + Yd_ah - C_ah,
+  V_ph ~ V_ph[-1] + Yd_ph - C_ph,
+  V ~ V_ah + V_ph, 
+  C_ah ~ alpha1_ah * Yd_ah + alpha2_ah * V_ah[-1],
+  C_ph ~ alpha1_ph * Yd_ph + alpha2_ah * V_ph[-1],
+  C ~ C_ah + C_ph,
+  M_ah ~ V_ah,
+  M_ph ~ V_ph, 
+  M ~ M_ah + M_ph,
+  Ms ~ Ms[-1] + (Ms - Ms[-1]), #skal sidste parentes med?
+  Lg ~ Lg[-1]+(G+r[-1]*Lg[-1]+P)- T
+)
+
+sfcr_sankey(tfm_pc, pc)
+# Set values for the exogenous variables and the parameters
+
+pc_ext <- sfcr_set(
+  # Exogenous
+  
+  r ~ 0.025,
+  G ~ 20,
+  theta ~ 0.4, 
+  omega ~ 0.25,
+  tau ~ 0.1,
+  
+  # Parameters
+  
+  alpha1_ah ~ 0.6,
+  alpha2_ah ~ 0.4,
+  alpha1_ph ~ 0.4,
+  alpha2_ph ~ 0.6
+)
+
+#Set initial values
+
+pc_initial <- sfcr_set(
+  M ~ 21.62,
+  Ms ~ 21.62,
+  V ~ 86.485
+)
+
+# Simulate the baseline model
+
+pc <- sfcr_baseline(
+  equations = pc_eqs,
+  external = pc_ext,
+  initial = pc_initial,
+  periods = 100,
+  hidden = c("Hh" = "Hs")
+)
+
+# We check the consistency of the model using the balance sheet
+
+sfcr_validate(
+  matrix = bs_pc,
+  baseline = pc,
+  which = "bs")
+
+# We check the consistency of the model using the TFM
+
+sfcr_validate(
+  matrix = tfm_pc,
+  baseline = pc,
+  which = "tfm"
+)
+
+
+#Create a table showing some of the variables of the model
+
+pc %>%
+  filter(period %in% c(1, 2, 30, 50, 80, 100)) %>%
+  select(period, G, Y, Yd, C) %>%
+  t() %>%
+  round(digits = 1)
+
+# We create  a DAG
+
+sfcr_dag_cycles_plot(pc_eqs)
+
+# We create  a Sankey (Leave this one out due to errors)
+
+sfcr_sankey(tfm_pc, pc)
+
+#### SCENARIO
+
+# Create a scenario where the interest rate increases from 0.025 to 0.035
+
+shock <- sfcr_shock(
+  variables = sfcr_set(
+    r ~ 0.035  
+  ),
+  start = 15,
+  end = 100
+)
+
+# Create the scenario where the shock takes place
+
+pc1 <- sfcr_scenario(
+  baseline = pc,
+  scenario = shock,
+  periods = 100
+)
+
+
+# We create the variables defining the shares of money and bills in Households portfolio.
+# We use pc1 to see the impact of the change in the interest in the portfolio allocation.
+pc1 %>%
+  filter(period %in% c(3, 15, 16, 17, 18, 100)) %>%
+  select(period, G, Y, Yd, C) %>%
+  t() %>%
+  round(digits = 1)
+
+pc1$BV <- pc1$Bh/pc1$V
+pc1$MV <- pc1$Hh/pc1$V
+
+pc1_long <- pc1 %>%
+  pivot_longer(cols = -period)
+
+#Figure 4.3 (if you change lambda1 ~ 5 to a lower number you get 
+# the fluctuations from the book, but lower share of BV)
+
+pc1_long %>%
+  filter(name %in% c("BV", "MV")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line() +
+  facet_wrap(~ name, scales = 'free_y') +
+  labs(title = "Wealth alocation")
+
+#Figure 4.4 (Remark, that it seems like Yd and C are identical
+# This is not the case if you look at the table)
+
+pc1_long %>%
+  filter(name %in% c("Yd", "C")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line(aes(linetype = name)) +
+  labs(title = "Evolution of disposable income and household consumption")
+
+```
+
