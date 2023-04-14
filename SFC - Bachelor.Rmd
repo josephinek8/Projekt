@@ -22,8 +22,10 @@ bs_pension <- sfcr_matrix(
 
 sfcr_matrix_display(bs_pension)
 # We check the consistency of the model using the balance sheet
+```
 
 
+```{r}
 #Step 2_ Write the TFM
 
 tfm_pension <- sfcr_matrix(
@@ -43,7 +45,10 @@ tfm_pension <- sfcr_matrix(
 )
 
 sfcr_matrix_display(tfm_pension)
+```
 
+
+```{r}
 # Write the system of equations
 
 pension_eqs <- sfcr_set(
@@ -97,7 +102,10 @@ pc_initial <- sfcr_set(
   Ms ~ 21.62,
   V ~ 86.485
 )
+```
 
+
+```{r}
 # Simulate the baseline model
 
 pc <- sfcr_baseline(
@@ -107,7 +115,10 @@ pc <- sfcr_baseline(
   periods = 100,
   hidden = c("Hh" = "Hs")
 )
+```
 
+
+```{r}
 # We check the consistency of the model using the balance sheet
 
 sfcr_validate(
@@ -122,8 +133,10 @@ sfcr_validate(
   baseline = pc,
   which = "tfm"
 )
+```
 
 
+```{r}
 #Create a table showing some of the variables of the model
 
 pc %>%
