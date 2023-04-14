@@ -16,7 +16,6 @@ bs_pension <- sfcr_matrix(
   columns = c("Beskæftigede", "Arbejdsløse", "Pensionister", "Production", "Government"),
   code = c("b","al","pen", "p", "g"),
   c("Money", b = "+M_b", al= "+M_al", pen="+M_pen", g = "-Ms"),
-  c("Loans", g = "-Lg", b ="+L"), 
   c("Wealth", b = "-V_b", al = "-V_al", pen="-V_pen", g = "+V")
 )
 
@@ -34,15 +33,14 @@ tfm_pension <- sfcr_matrix(
   c("Consumption", b = "-C_b", al="-C_al", pen="-C_pen", p = "+C"),
   c("Government Expenditure", p = "+G", g = "-G"),
   c("Income = GDP", b = "+Y", p = "-Y"),
-  c("Interest on Loans/Public Debt", g = "-r[-1]*L_g[-1]", b = "+r[-1]*L[-1]"), 
+  c("Interest on Loans/Public Debt", g = "-r[-1]*Ms[-1]", b = "+r[-1]*Ms[-1]"), 
   c("Pension payouts", pen = "+FP", g = "-FP"),
   c("Contributions to social security", b = "-Ss", g = "+Ss"), #ATP
   c("Unemployment benefits", al = "+DP", g = "-DP"),
   c("Tax on Income", b = "-T_b", g = "+T_b"), 
   c("Tax on Pension", pen = "-T_pen", g = "+T_pen"),
-  c("Tax on Unemployment benefits", al = "-T_ul", g = "+T_ul"),
-  c("Change in Money", b = "-(M_b - M_b[-1])", al="-(M_al - M_al[-1])", pen = "-(M_pen- M_pen[-1])", g = "(Ms - Ms[-1])"),
-  c("Change in Loans/Public Debt", g = "(Lg - Lg[-1])", b = "-(L - L[-1])")
+  c("Tax on Unemployment benefits", al = "-T_al", g = "+T_al"),
+  c("Change in Money", b = "-(M_b - M_b[-1])", al="-(M_al - M_al[-1])", pen = "-(M_pen- M_pen[-1])", g = "(Ms - Ms[-1])")
 )
 
 sfcr_matrix_display(tfm_pension)
@@ -65,7 +63,7 @@ pension_eqs <- sfcr_set(
   Y ~ C + G,
   
   #Adfærdsliginger
-  Yd_b ~ W*N- T_b - Ss,
+  Yd_b ~ W*N + r[-1]*Ms[-1] - T_b - Ss,
   Yd_al ~ DP - T_al,
   Yd_pen ~ FP - T_pen, #Forskellige skatterater? eller skal en skattesats ganges på?
   Yd ~ Yd_b + Yd_al+ Yd_pen,
@@ -91,15 +89,15 @@ pension_eqs <- sfcr_set(
   V_b ~ V_b[-1] + Yd_b - C_b,
   V_al ~ V_al[-1] + Yd_al - C_al,
   V_pen ~ V_pen[-1] + Yd_pen - C_pen,
-  V ~ V_b + + V_al + V_pen, 
-  M_b ~ V_b,
+  V ~ V_b + V_al + V_pen, 
+  M_b ~ V_b ,
   M_al ~ V_al, 
   M_pen ~ V_pen, 
   M ~ M_b + M_al + M_pen,
   
   #Ændringer i stocks
-  Ms ~ Ms[-1] + (Ms - Ms[-1]), #skal sidste parentes med?
-  Lg ~ Lg[-1]+(G+r[-1]*Lg[-1]+FP)- T
+ # Ms ~ Ms[-1] + (M - M[-1]), #skal sidste parentes med?
+  Ms ~ Ms[-1]+(G+r[-1]*Ms[-1]+FP+DP)- (T+Ss)
 )
 ```
 
@@ -116,11 +114,11 @@ pension_ext <- sfcr_set(
   theta1 ~ 0.4, 
   theta2 ~ 0.25,
   theta3 ~ 0.15,
-  tau ~ 1, #Forbrugsudglattende. Når W og tau har samme størrelse.
+  tau ~ 0.8, #Forbrugsudglattende. Når W og tau har samme størrelse (1). 
   tau2 ~ 0.6, #kompensationsgrad - 60%
   beta ~ 0.7, #andel af arbejdsstyrken ud af befolkningen. 
   gamma ~ 0.2, #procentdel af disponibel indkomst til ss
-  pr ~ 1, 
+  pr ~ 1, #Hvis produktiviteten steg, samtidigt med færre hænder, kan man risikere, at man rent faktisk kan producere mere. Her er det dog lidt det modsatte. Hvis man endogeniserer produktiviteten i modellen, vil man kunne diskutere, hvordan produktiviteten påvirkes af den demografiske udvikling.
   W ~ 1,
   Pop ~ 100, # Samlede befolkning
   
@@ -137,9 +135,13 @@ pension_ext <- sfcr_set(
 #Set initial values
 
 pension_initial <- sfcr_set(
-  M ~ 21.62,
+  M_b ~ 21.62,
+  M_al ~ 0,
+  M_pen ~ 0,
   Ms ~ 21.62,
-  V ~ 86.485
+  V_b ~ 21.62,
+  V_al ~ 0,
+  V_pen ~ 0
    # Samlede befolkning
 )
 ```
@@ -152,8 +154,7 @@ pension <- sfcr_baseline(
   equations = pension_eqs,
   external = pension_ext,
   initial = pension_initial,
-  periods = 100,
-  hidden = c("Hh" = "Hs")
+  periods = 100
 )
 ```
 
@@ -162,17 +163,19 @@ pension <- sfcr_baseline(
 # We check the consistency of the model using the balance sheet
 
 sfcr_validate(
-  matrix = bs_pc,
-  baseline = pc,
+  matrix = bs_pension,
+  baseline = pension,
   which = "bs")
 
 # We check the consistency of the model using the TFM
 
 sfcr_validate(
-  matrix = tfm_pc,
-  baseline = pc,
+  matrix = tfm_pension,
+  baseline = pension,
   which = "tfm"
 )
+
+plot(pension$Y)
 ```
 
 
@@ -199,16 +202,16 @@ sfcr_sankey(tfm_pc, pc)
 
 shock <- sfcr_shock(
   variables = sfcr_set(
-    r ~ 0.035  
+    beta ~ 0.6
   ),
-  start = 15,
+  start = 20,
   end = 100
 )
 
 # Create the scenario where the shock takes place
 
 pc1 <- sfcr_scenario(
-  baseline = pc,
+  baseline = pension,
   scenario = shock,
   periods = 100
 )
@@ -222,8 +225,8 @@ pc1 %>%
   t() %>%
   round(digits = 1)
 
-pc1$BV <- pc1$Bh/pc1$V
-pc1$MV <- pc1$Hh/pc1$V
+pc1$MsY <- pc1$Ms/pc1$Y
+
 
 pc1_long <- pc1 %>%
   pivot_longer(cols = -period)
@@ -232,11 +235,11 @@ pc1_long <- pc1 %>%
 # the fluctuations from the book, but lower share of BV)
 
 pc1_long %>%
-  filter(name %in% c("BV", "MV")) %>%
+  filter(name %in% c("MsY")) %>%
   ggplot(aes(x = period, y = value)) +
   geom_line() +
   facet_wrap(~ name, scales = 'free_y') +
-  labs(title = "Wealth alocation")
+  labs(title = "Y og C")
 
 #Figure 4.4 (Remark, that it seems like Yd and C are identical
 # This is not the case if you look at the table)
