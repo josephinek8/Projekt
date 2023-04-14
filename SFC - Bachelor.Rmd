@@ -114,7 +114,7 @@ pension_ext <- sfcr_set(
   theta1 ~ 0.4, 
   theta2 ~ 0.25,
   theta3 ~ 0.15,
-  tau ~ 0.8, #Forbrugsudglattende. Når W og tau har samme størrelse (1). 
+  tau ~ 0.8, #Forbrugsudglattende. Når W og tau har samme størrelse (1). Tau er dog mindre end 1, hvorfor forbruget for pensionister ikke udglattes over livsperioden.
   tau2 ~ 0.6, #kompensationsgrad - 60%
   beta ~ 0.7, #andel af arbejdsstyrken ud af befolkningen. 
   gamma ~ 0.2, #procentdel af disponibel indkomst til ss
@@ -136,13 +136,14 @@ pension_ext <- sfcr_set(
 
 pension_initial <- sfcr_set(
   M_b ~ 21.62,
-  M_al ~ 0,
+  M_al ~ 0, #arbejdsløse og pensionister forbruger alt, hvorfor de ingen opsparing har.
   M_pen ~ 0,
   Ms ~ 21.62,
   V_b ~ 21.62,
-  V_al ~ 0,
+  V_al ~ 0, # ingen formue, da de forbruger alt.
   V_pen ~ 0
-   # Samlede befolkning
+  
+  #staten printer penge for at finansiere sit underskud. 
 )
 ```
 
@@ -202,7 +203,7 @@ sfcr_sankey(tfm_pc, pc)
 
 shock <- sfcr_shock(
   variables = sfcr_set(
-    beta ~ 0.6
+    beta ~ 0.6 #arbejdsstyrkens andel falder fra 0,7 til 0,6
   ),
   start = 20,
   end = 100
@@ -225,7 +226,7 @@ pc1 %>%
   t() %>%
   round(digits = 1)
 
-pc1$MsY <- pc1$Ms/pc1$Y
+pc1$MsY <- pc1$Ms/pc1$Y #her konstrueres gælden over for Y
 
 
 pc1_long <- pc1 %>%
