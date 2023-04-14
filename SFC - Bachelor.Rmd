@@ -10,7 +10,6 @@ library(tidyverse)
 library(tidygraph)
 
 
-hej
 #Step 1: Write the balance sheet matrix
 
 bs_pension <- sfcr_matrix(
