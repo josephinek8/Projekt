@@ -55,7 +55,7 @@ pension_eqs <- sfcr_set(
   #Hvordan defineres aktive og passive husholdninger som andele af hele befolkningen???
   Y ~ C + G,
   Yd_ah ~ Y - T_ah, #skal penge være rentebærende. Penge er her ikke inkluderet.
-  Yd_ph ~ P - T_pH, #Forskellige skatterater? eller skal en skattesats ganges på?
+  Yd_ph ~ P - T_ph, #Forskellige skatterater? eller skal en skattesats ganges på?
   Yd ~ Yd_ah + Yd_ph,
   P ~ tau * G,
   T_ah ~ theta * (Y + r[-1]*M_ah[-1]), #er penge rentebærende?
@@ -77,10 +77,10 @@ pension_eqs <- sfcr_set(
 
 
 ```{r}
-sfcr_sankey(tfm_pension, pension)
+#sfcr_sankey(tfm_pension, pension)
 # Set values for the exogenous variables and the parameters
 
-pc_ext <- sfcr_set(
+pension_ext <- sfcr_set(
   # Exogenous
   
   r ~ 0.025,
@@ -99,7 +99,7 @@ pc_ext <- sfcr_set(
 
 #Set initial values
 
-pc_initial <- sfcr_set(
+pension_initial <- sfcr_set(
   M ~ 21.62,
   Ms ~ 21.62,
   V ~ 86.485
@@ -110,10 +110,10 @@ pc_initial <- sfcr_set(
 ```{r}
 # Simulate the baseline model
 
-pc <- sfcr_baseline(
-  equations = pc_eqs,
-  external = pc_ext,
-  initial = pc_initial,
+pension <- sfcr_baseline(
+  equations = pension_eqs,
+  external = pension_ext,
+  initial = pension_initial,
   periods = 100,
   hidden = c("Hh" = "Hs")
 )
