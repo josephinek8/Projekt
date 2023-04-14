@@ -13,11 +13,11 @@ library(tidygraph)
 #Step 1: Write the balance sheet matrix
 
 bs_pension <- sfcr_matrix(
-  columns = c("Arbejdsstyrken", "Pensionister", "Production", "Government"),
-  code = c("a","pen", "p", "g"),
-  c("Money", a = "+M_a", pen="+M_ua", g = "-Ms"),
-  c("Loans", g = "-Lg", a ="+L"), 
-  c("Wealth", a = "-V_a", pen="-V_ua", g = "+V")
+  columns = c("Beskæftigede", "Arbejdsløse", "Pensionister", "Production", "Government"),
+  code = c("b","al","pen", "p", "g"),
+  c("Money", b = "+M_b", al= "+M_al", pen="+M_pen", g = "-Ms"),
+  c("Loans", g = "-Lg", b ="+L"), 
+  c("Wealth", b = "-V_b", al = "-V_al", pen="-V_pen", g = "+V")
 )
 
 sfcr_matrix_display(bs_pension)
@@ -29,18 +29,20 @@ sfcr_matrix_display(bs_pension)
 #Step 2_ Write the TFM
 
 tfm_pension <- sfcr_matrix(
-  columns = c("Arbejdsstyrken", "Pensionister", "Production", "Government"),
-  codes = c("a", "pen", "p", "g"),
-  c("Consumption", a = "-C_a", pen="-C_pen", p = "+C"),
+  columns = c("Beskæftigede", "Arbejdsløse", "Pensionister", "Production", "Government"),
+  codes = c("b","al", "pen", "p", "g"),
+  c("Consumption", b = "-C_b", al="-C_al", pen="-C_pen", p = "+C"),
   c("Government Expenditure", p = "+G", g = "-G"),
-  c("Income = GDP", a = "+Y", p = "-Y"),
-  c("Interest on Loans/Public Debt", g = "-r[-1]*L_g[-1]", a = "r[-1]*L[-1]"), 
+  c("Income = GDP", b = "+Y", p = "-Y"),
+  c("Interest on Loans/Public Debt", g = "-r[-1]*L_g[-1]", b = "+r[-1]*L[-1]"), 
   c("Pension payouts", pen = "+FP", g = "-FP"),
-  c("Contributions to social security", a = "-Ss", g = "+Ss"),
-  c("Tax on Income", a = "-T_a", g = "+T_a"), 
+  c("Contributions to social security", b = "-Ss", g = "+Ss"), #ATP
+  c("Unemployment benefits", al = "+DP", g = "-DP"),
+  c("Tax on Income", b = "-T_b", g = "+T_b"), 
   c("Tax on Pension", pen = "-T_pen", g = "+T_pen"),
-  c("Change in Money", a = "-(M_a - M_a[-1])", pen = "-(M_pen- M_pen[-1])", g = "(Ms - Ms[-1])"),
-  c("Change in Loans/Public Debt", g = "(Lg - Lg[-1])", a = "-(L - L[-1])")
+  c("Tax on Unemployment benefits", al = "-T_ul", g = "+T_ul"),
+  c("Change in Money", b = "-(M_b - M_b[-1])", al="-(M_al - M_al[-1])", pen = "-(M_pen- M_pen[-1])", g = "(Ms - Ms[-1])"),
+  c("Change in Loans/Public Debt", g = "(Lg - Lg[-1])", b = "-(L - L[-1])")
 )
 
 sfcr_matrix_display(tfm_pension)
@@ -56,38 +58,44 @@ pension_eqs <- sfcr_set(
   #Definition af befolkning, arbejdsløse m.m
   Lf ~ beta * Pop, #arbejdsstyrken
   N ~ Y/pr, # efterspørgslen efter arbejdskraft. 
-  Ul~ Lf - N, #andelen af arbejdsløse af den samlede arbejdsstyrke
+  Ul ~ Lf - N, #Det faktiske antal af arbejdsløse af den samlede arbejdsstyrke
   Pen ~ Pop - Lf, #andelen af pensionister
   
   #Regnskabsidentiteter
   Y ~ C + G,
   
   #Adfærdsliginger
-  Yd_a ~ Y - T_a,
+  Yd_b ~ W*N- T_b - Ss,
+  Yd_al ~ DP - T_al,
   Yd_pen ~ FP - T_pen, #Forskellige skatterater? eller skal en skattesats ganges på?
-  Yd ~ Yd_ah + Yd_ph,
+  Yd ~ Yd_b + Yd_al+ Yd_pen,
  
-  FP ~ tau * G, #Folkepension som en del af de offentlige udgifter.
-  Ss ~ gamma * Yd_a,
+  FP ~ tau * W * Pen, #Folkepension. Tau ganges på lønraten for at få en sammenhæng mellem indkomst for de tre medtagne grupper. 
+  Ss ~ gamma * Yd_b,
+  DP ~ tau2 * W * Ul,   
  
   #Skatter
-  T_a ~ theta * Y, 
-  T_pen ~ omega * FP,
-  T ~ T_a + T_pen,
+  T_b ~ theta1 * Y, 
+  T_al ~ theta2 * DP,
+  T_pen ~ theta3 * FP,
+  T ~ T_b + T_al+ T_pen,
   
   #Forbrug
-  C_a ~ alpha1_a * Yd_a + alpha2_a * V_a[-1],
+  C_b ~ alpha1_b * Yd_b + alpha2_b * V_b[-1],
+  C_al ~ alpha1_al * Yd_al + alpha2_al * V_al[-1],
   C_pen ~ alpha1_pen * Yd_pen + alpha2_pen * V_pen[-1],
-  C ~ C_a + C_pen,
+  C ~ C_b + C_al + C_pen,
   
   
   #Formue
-  V_a ~ V_a[-1] + Yd_a - C_a,
+  V_b ~ V_b[-1] + Yd_b - C_b,
+  V_al ~ V_al[-1] + Yd_al - C_al,
   V_pen ~ V_pen[-1] + Yd_pen - C_pen,
-  V ~ V_a + V_pen, 
-  M_a ~ V_a,
+  V ~ V_b + + V_al + V_pen, 
+  M_b ~ V_b,
+  M_al ~ V_al, 
   M_pen ~ V_pen, 
-  M ~ M_a + M_pen,
+  M ~ M_b + M_al + M_pen,
   
   #Ændringer i stocks
   Ms ~ Ms[-1] + (Ms - Ms[-1]), #skal sidste parentes med?
@@ -105,19 +113,25 @@ pension_ext <- sfcr_set(
   
   r ~ 0.025,
   G ~ 20,
-  theta ~ 0.4, 
-  omega ~ 0.25,
-  tau ~ 0.1,
-  beta ~ 0.7,
-  gamma ~ 0.2,
+  theta1 ~ 0.4, 
+  theta2 ~ 0.25,
+  theta3 ~ 0.15,
+  tau ~ 1, #Forbrugsudglattende. Når W og tau har samme størrelse.
+  tau2 ~ 0.6, #kompensationsgrad - 60%
+  beta ~ 0.7, #andel af arbejdsstyrken ud af befolkningen. 
+  gamma ~ 0.2, #procentdel af disponibel indkomst til ss
   pr ~ 1, 
+  W ~ 1,
+  Pop ~ 100, # Samlede befolkning
   
   # Parameters
   
-  alpha1_ah ~ 0.6,
-  alpha2_ah ~ 0.4,
-  alpha1_ph ~ 0.4,
-  alpha2_ph ~ 0.6
+  alpha1_b ~ 0.6,
+  alpha2_b ~ 0.4,
+  alpha1_al ~ 0.4,
+  alpha2_al ~ 0.6,
+  alpha1_pen ~ 0.6,
+  alpha2_pen ~ 0.4
 )
 
 #Set initial values
@@ -125,8 +139,8 @@ pension_ext <- sfcr_set(
 pension_initial <- sfcr_set(
   M ~ 21.62,
   Ms ~ 21.62,
-  V ~ 86.485,
-  Pop ~ 100 # Samlede befolkning
+  V ~ 86.485
+   # Samlede befolkning
 )
 ```
 
