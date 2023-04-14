@@ -9,8 +9,6 @@ library(sfcr)
 library(tidyverse)
 library(tidygraph)
 
-
-hej
 #Step 1: Write the balance sheet matrix
 
 bs_pension <- sfcr_matrix(
@@ -81,7 +79,7 @@ pension_eqs <- sfcr_set(
 sfcr_sankey(tfm_pension, pension)
 # Set values for the exogenous variables and the parameters
 
-pc_ext <- sfcr_set(
+pension_ext <- sfcr_set(
   # Exogenous
   
   r ~ 0.025,
@@ -100,7 +98,7 @@ pc_ext <- sfcr_set(
 
 #Set initial values
 
-pc_initial <- sfcr_set(
+pension_initial <- sfcr_set(
   M ~ 21.62,
   Ms ~ 21.62,
   V ~ 86.485
@@ -111,10 +109,10 @@ pc_initial <- sfcr_set(
 ```{r}
 # Simulate the baseline model
 
-pc <- sfcr_baseline(
-  equations = pc_eqs,
-  external = pc_ext,
-  initial = pc_initial,
+pension <- sfcr_baseline(
+  equations = pension_eqs,
+  external = pension_ext,
+  initial = pension_initial,
   periods = 100,
   hidden = c("Hh" = "Hs")
 )
