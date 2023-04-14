@@ -33,8 +33,7 @@ tfm_pension <- sfcr_matrix(
   codes = c("ah", "ph", "p", "g", "cbc", "cbk"),
   c("Consumption", ah = "-C_ah", ph="-C_ph", p = "C"),
   c("Government Expenditure", p = "G", g = "-G"),
-  c("Income = GDP", p = "[Y]"),
-  c("Wage", ah = "+W", p = "-W"),
+  c("Income = GDP", ah = "+Y", p = "-Y"),
   #c("Interest Payments Money", ah = "r[-1]*Hh_ah[-1]", ph = "r[-1]*Hh_ph[-1] ",cbc = "-r[-1]*Hs[-1]"),. Er penge rentebærende?
   c("Interest on Loans/Public Debt", g = "-r[-1]*L_g[-1]", cbc = "r[-1]*L[-1]"), #Spørg Sebastian
   #c("CB Profits", g = "r[-1]*Bcb[-1]", cbc = "-r[-1]*Bcb[-1]"), Skal centralbanken tilbagebetale profit eller skal den uddeles til husholdningerne?
@@ -54,13 +53,12 @@ sfcr_matrix_display(tfm_pension)
 pension_eqs <- sfcr_set(
   #Hvordan defineres aktive og passive husholdninger som andele af hele befolkningen???
   Y ~ C + G,
-  Yd_ah ~ W - T_ah, #skal penge være rentebærende. Penge er her ikke inkluderet.
+  Yd_ah ~ Y - T_ah, #skal penge være rentebærende. Penge er her ikke inkluderet.
   Yd_ph ~ P - T_pH, #Forskellige skatterater? eller skal en skattesats ganges på?
   Yd ~ Yd_ah + Yd_ph,
-  W ~ Y,
   P ~ tau * G,
-  T_ah ~ theta * (W + r[-1]*M_ah[-1]), #er penge rentebærende?
-  T_ph ~ omega * P #spørg
+  T_ah ~ theta * (Y + r[-1]*M_ah[-1]), #er penge rentebærende?
+  T_ph ~ omega * P, #spørg
   T ~ T_ah + T_ph,
   V_ah ~ V_ah[-1] + Yd_ah - C_ah,
   V_ph ~ V_ph[-1] + Yd_ph - C_ph,
@@ -74,8 +72,11 @@ pension_eqs <- sfcr_set(
   Ms ~ Ms[-1] + (Ms - Ms[-1]), #skal sidste parentes med?
   Lg ~ Lg[-1]+(G+r[-1]*Lg[-1]+P)- T
 )
+```
 
-sfcr_sankey(tfm_pc, pc)
+
+```{r}
+sfcr_sankey(tfm_pension, pension)
 # Set values for the exogenous variables and the parameters
 
 pc_ext <- sfcr_set(
