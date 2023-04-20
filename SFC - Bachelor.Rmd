@@ -110,17 +110,17 @@ pension_ext <- sfcr_set(
   # Exogenous
   
   r ~ 0.025,
-  G ~ 20,
+  G ~ 10,
   theta1 ~ 0.4, 
   theta2 ~ 0.25,
   theta3 ~ 0.15,
   tau ~ 0.7, #Forbrugsudglattende. Når W og tau har samme størrelse (1). Tau er dog mindre end 1, hvorfor forbruget for pensionister ikke udglattes over livsperioden.
   tau2 ~ 0.65, #kompensationsgrad - 60%
-  beta ~ 0.7, #andel af arbejdsstyrken ud af befolkningen. 
+  beta ~ 0.75, #andel af arbejdsstyrken ud af befolkningen. 
   gamma ~ 0.2, #procentdel af disponibel indkomst til ss
   pr ~ 1, #Hvis produktiviteten steg, samtidigt med færre hænder, kan man risikere, at man rent faktisk kan producere mere. Her er det dog lidt det modsatte. Hvis man endogeniserer produktiviteten i modellen, vil man kunne diskutere, hvordan produktiviteten påvirkes af den demografiske udvikling.
   W ~ 1,
-  Pop ~ 100, # Samlede befolkning
+  Pop ~ 150, # Samlede befolkning
   
   # Parameters
   
@@ -187,7 +187,7 @@ plot(pension$period, pension$Y, type = "l", lty = 1, main = "Baseline scenarie -
 
 shock <- sfcr_shock(
   variables = sfcr_set(
-    beta ~ 0.6 #arbejdsstyrkens andel falder fra 0,7 til 0,6
+    beta ~ 0.65 #arbejdsstyrkens andel falder fra 0,7 til 0,6
   ),
   start = 20,
   end = 100
@@ -201,7 +201,7 @@ pc1 <- sfcr_scenario(
   periods = 100
 )
 
-
+pension$Y
 # We create the variables defining the shares of money and bills in Households portfolio.
 # We use pc1 to see the impact of the change in the interest in the portfolio allocation.
 
@@ -220,8 +220,12 @@ pc1 %>%
 pc1_long <- pc1 %>%
   pivot_longer(cols = -period)
 
-#Figure 4.3 (if you change lambda1 ~ 5 to a lower number you get 
-# the fluctuations from the book, but lower share of BV)
+#PLOTS 
+pc1_long %>%
+  filter(name %in% c("Y", "C")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line(aes(linetype = name)) +
+  labs(title = "Ændringen i BNP og forbrug")
 
 pc1_long %>%
   filter(name %in% c("MsY")) %>%
