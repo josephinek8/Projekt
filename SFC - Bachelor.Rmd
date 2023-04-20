@@ -228,7 +228,7 @@ pc1_long %>%
   labs(title = "Ændringen i BNP og forbrug")
 
 pc1_long %>%
-  filter(name %in% c("Ss")) %>%
+  filter(name %in% c("V_b", "V_al", "V_pen")) %>%
   ggplot(aes(x = period, y = value)) +
   geom_line(aes(linetype = name)) +
   labs(title = "Ændringen i BNP og forbrug")
