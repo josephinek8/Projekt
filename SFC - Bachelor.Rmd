@@ -187,7 +187,7 @@ plot(pension$period, pension$Y, type = "l", lty = 1, main = "Baseline scenarie -
 
 shock <- sfcr_shock(
   variables = sfcr_set(
-    beta ~ 0.65 #arbejdsstyrkens andel falder fra 0,7 til 0,6
+    beta ~ 0.65 #arbejdsstyrkens andel falder fra 0,75 til 0,65
   ),
   start = 20,
   end = 100
@@ -212,7 +212,7 @@ pc1$PenPop
 
 pc1 %>%
   filter(period %in% c(3, 21, 50, 75, 90, 100)) %>%
-  select(period, G, Y, Yd, Yd_al, C, MsY, PenPop) %>%
+  select(period, G, Y, Yd, C, MsY, PenPop) %>%
   t() %>%
   round(digits = 3)
 
