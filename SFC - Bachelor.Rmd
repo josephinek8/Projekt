@@ -114,8 +114,8 @@ pension_ext <- sfcr_set(
   theta1 ~ 0.4, 
   theta2 ~ 0.25,
   theta3 ~ 0.15,
-  tau ~ 0.8, #Forbrugsudglattende. Når W og tau har samme størrelse (1). Tau er dog mindre end 1, hvorfor forbruget for pensionister ikke udglattes over livsperioden.
-  tau2 ~ 0.6, #kompensationsgrad - 60%
+  tau ~ 0.7, #Forbrugsudglattende. Når W og tau har samme størrelse (1). Tau er dog mindre end 1, hvorfor forbruget for pensionister ikke udglattes over livsperioden.
+  tau2 ~ 0.65, #kompensationsgrad - 60%
   beta ~ 0.7, #andel af arbejdsstyrken ud af befolkningen. 
   gamma ~ 0.2, #procentdel af disponibel indkomst til ss
   pr ~ 1, #Hvis produktiviteten steg, samtidigt med færre hænder, kan man risikere, at man rent faktisk kan producere mere. Her er det dog lidt det modsatte. Hvis man endogeniserer produktiviteten i modellen, vil man kunne diskutere, hvordan produktiviteten påvirkes af den demografiske udvikling.
@@ -126,10 +126,10 @@ pension_ext <- sfcr_set(
   
   alpha1_b ~ 0.6,
   alpha2_b ~ 0.4,
-  alpha1_al ~ 0.4,
-  alpha2_al ~ 0.6,
-  alpha1_pen ~ 0.6,
-  alpha2_pen ~ 0.4
+  alpha1_al ~ 0.8,
+  alpha2_al ~ 0.2,
+  alpha1_pen ~ 0.8,
+  alpha2_pen ~ 0.2
 )
 
 #Set initial values
@@ -181,22 +181,6 @@ plot(pension$Y)
 
 
 ```{r}
-#Create a table showing some of the variables of the model
-
-pc %>%
-  filter(period %in% c(1, 2, 30, 50, 80, 100)) %>%
-  select(period, G, Y, Yd, C) %>%
-  t() %>%
-  round(digits = 1)
-
-# We create  a DAG
-
-sfcr_dag_cycles_plot(pc_eqs)
-
-# We create  a Sankey (Leave this one out due to errors)
-
-sfcr_sankey(tfm_pc, pc)
-
 #### SCENARIO
 
 # Create a scenario where the interest rate increases from 0.025 to 0.035
