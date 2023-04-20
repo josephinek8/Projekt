@@ -228,6 +228,12 @@ pc1_long %>%
   labs(title = "Ændringen i BNP og forbrug")
 
 pc1_long %>%
+  filter(name %in% c("Ss")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line(aes(linetype = name)) +
+  labs(title = "Ændringen i BNP og forbrug")
+
+pc1_long %>%
   filter(name %in% c("MsY")) %>%
   ggplot(aes(x = period, y = value)) +
   geom_line() +
