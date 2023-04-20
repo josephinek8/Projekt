@@ -176,7 +176,7 @@ sfcr_validate(
   which = "tfm"
 )
 
-plot(pension$Y, type="l")
+plot(pension$period, pension$Y, type = "l", lty = 1, main = "Baseline scenario - GDP")
 ```
 
 
@@ -204,13 +204,13 @@ pc1 <- sfcr_scenario(
 
 # We create the variables defining the shares of money and bills in Households portfolio.
 # We use pc1 to see the impact of the change in the interest in the portfolio allocation.
+pc1$MsY <- pc1$Ms/pc1$Y #her konstrueres gælden over for Y
+
 pc1 %>%
   filter(period %in% c(3, 21, 50, 75, 90, 100)) %>%
-  select(period, G, Y, Yd, C) %>%
+  select(period, G, Y, Yd, C, MsY) %>%
   t() %>%
-  round(digits = 1)
-
-pc1$MsY <- pc1$Ms/pc1$Y #her konstrueres gælden over for Y
+  round(digits = 3)
 
 
 pc1_long <- pc1 %>%
