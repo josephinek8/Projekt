@@ -126,10 +126,10 @@ pension_ext <- sfcr_set(
   
   alpha1_b ~ 0.6,
   alpha2_b ~ 0.4,
-  alpha1_al ~ 0.8,
-  alpha2_al ~ 0.2,
-  alpha1_pen ~ 0.8,
-  alpha2_pen ~ 0.2
+  alpha1_al ~ 0.9,
+  alpha2_al ~ 0.1,
+  alpha1_pen ~ 0.9,
+  alpha2_pen ~ 0.1
 )
 
 #Set initial values
