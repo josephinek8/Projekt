@@ -73,7 +73,7 @@ pension_eqs <- sfcr_set(
   DP ~ tau2 * W * Ul,   
  
   #Skatter
-  T_b ~ theta1 * Y, 
+  T_b ~ theta1 * (W*N), 
   T_al ~ theta2 * DP,
   T_pen ~ theta3 * FP,
   T ~ T_b + T_al+ T_pen,
@@ -116,7 +116,7 @@ pension_ext <- sfcr_set(
   theta3 ~ 0.15,
   tau ~ 0.7, #Forbrugsudglattende. Når W og tau har samme størrelse (1). Tau er dog mindre end 1, hvorfor forbruget for pensionister ikke udglattes over livsperioden.
   tau2 ~ 0.65, #kompensationsgrad - 60%
-  beta ~ 0.75, #andel af arbejdsstyrken ud af befolkningen. 
+  beta ~ 0.65, #andel af arbejdsstyrken ud af befolkningen - oprindeligt 0,75. 
   gamma ~ 0.2, #procentdel af disponibel indkomst til ss
   pr ~ 1, #Hvis produktiviteten steg, samtidigt med færre hænder, kan man risikere, at man rent faktisk kan producere mere. Her er det dog lidt det modsatte. Hvis man endogeniserer produktiviteten i modellen, vil man kunne diskutere, hvordan produktiviteten påvirkes af den demografiske udvikling.
   W ~ 1,
@@ -201,6 +201,7 @@ pc1 <- sfcr_scenario(
   periods = 100
 )
 
+
 pension$Y
 # We create the variables defining the shares of money and bills in Households portfolio.
 # We use pc1 to see the impact of the change in the interest in the portfolio allocation.
@@ -271,6 +272,50 @@ pc1_long %>%
   geom_line() +
   facet_wrap(~ name, scales = 'free_y') +
   labs(title = "Udviklingen i gælden og Y")
+
+```
+```{r}
+shock1 <- sfcr_shock(
+  variables = list(
+   # beta ~ 0.65, #arbejdsstyrkens andel falder fra 0,75 til 0,65
+    theta1 ~ 0.5 #
+  ),
+  start = 20,
+  end = 100
+)
+
+# Create the scenario where the shock takes place
+
+pc2 <- sfcr_scenario(
+  baseline = pension,
+  scenario = shock1,
+  periods = 100
+)
+
+pc2_long <- pc2 %>%
+  pivot_longer(cols = -period)
+
+pc2_long %>%
+  filter(name %in% c("Yd", "C")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line(aes(linetype = name)) +
+  labs(title = "Ændringen i disponibel indkomst, forbrug og BNP")
+
+pc2_long %>%
+  filter(name %in% c("Y")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line(aes(linetype = name)) +
+  labs(title = "Udviklingen i den økonomiske vækst")
+
+pc2$MsY <- pc2$Ms/pc2$Y
+
+pc2_long %>%
+  filter(name %in% c("Ms", "MsY")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line() +
+  facet_wrap(~ name, scales = 'free_y') +
+  labs(title = "Gæld og Gældsrate")
+
 
 ```
 
