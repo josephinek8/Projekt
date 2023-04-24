@@ -292,7 +292,7 @@ pc1_long %>%
 ```{r}
 shock1 <- sfcr_shock(
   variables = list(
-   # beta ~ 0.65, #arbejdsstyrkens andel falder fra 0,75 til 0,65
+    beta ~ 0.65, #arbejdsstyrkens andel falder fra 0,75 til 0,65
     theta1 ~ 0.5 #
   ),
   start = 20,
