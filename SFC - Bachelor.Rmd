@@ -116,7 +116,7 @@ pension_ext <- sfcr_set(
   theta3 ~ 0.15,
   tau ~ 0.7, #Forbrugsudglattende. Når W og tau har samme størrelse (1). Tau er dog mindre end 1, hvorfor forbruget for pensionister ikke udglattes over livsperioden.
   tau2 ~ 0.65, #kompensationsgrad - 60%
-  beta ~ 0.65, #andel af arbejdsstyrken ud af befolkningen - oprindeligt 0,75. 
+  beta ~ 0.75, #andel af arbejdsstyrken ud af befolkningen - oprindeligt 0,75. 
   gamma ~ 0.2, #procentdel af disponibel indkomst til ss
   pr ~ 1, #Hvis produktiviteten steg, samtidigt med færre hænder, kan man risikere, at man rent faktisk kan producere mere. Her er det dog lidt det modsatte. Hvis man endogeniserer produktiviteten i modellen, vil man kunne diskutere, hvordan produktiviteten påvirkes af den demografiske udvikling.
   W ~ 1,
@@ -243,6 +243,7 @@ pc1_long %>%
 
 
 plot(pc1$period, pc1$PenPop, type="l")
+plot(pc1$period, pc1$FP)
 
 pc1_long %>%
   filter(name %in% c("PenPop")) %>%
@@ -272,6 +273,20 @@ pc1_long %>%
   geom_line() +
   facet_wrap(~ name, scales = 'free_y') +
   labs(title = "Udviklingen i gælden og Y")
+
+pc1_long %>%
+  filter(name %in% c("FP", "DP")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line() +
+  facet_wrap(~ name, scales = 'free_y') +
+  labs(title = "Udvikling i folkepension og dagpenge")
+
+pc1_long %>%
+  filter(name %in% c("FP", "DP")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line(aes(linetype = name)) +
+  labs(title = "Udviklingen i folkepension og dagpenge efter chok")
+
 
 ```
 ```{r}
@@ -316,6 +331,13 @@ pc2_long %>%
   facet_wrap(~ name, scales = 'free_y') +
   labs(title = "Gæld og Gældsrate")
 
+
+pc2_long %>%
+  filter(name %in% c("FP")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line() +
+  facet_wrap(~ name, scales = 'free_y') +
+  labs(title = "Gæld og Gældsrate")
 
 ```
 
