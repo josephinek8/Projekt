@@ -339,5 +339,17 @@ pc2_long %>%
   facet_wrap(~ name, scales = 'free_y') +
   labs(title = "Gæld og Gældsrate")
 
+pc2_long %>%
+  filter(name %in% c("Yd_b", "Yd_al", "Yd_pen")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line(aes(linetype = name)) +
+  labs(title = "Udviklingen af disponibel indkomst")
+
+pc2_long %>%
+  filter(name %in% c("C_b", "C_al", "C_pen")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line(aes(linetype = name)) +
+  labs(title = "Udviklingen af disponibel indkomst")
+
 ```
 
