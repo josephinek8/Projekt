@@ -1,10 +1,9 @@
 ---
-title: "SFC- basismodellen"
+title: "SFC"
 author: "Josephine Kærsgaard"
-date: "2023-04-14"
+date: "2023-04-12"
 output: word_document
 ---
-
 ```{r}
 library(sfcr)
 library(tidyverse)
@@ -21,7 +20,6 @@ bs_pension <- sfcr_matrix(
 )
 
 sfcr_matrix_display(bs_pension)
-# We check the consistency of the model using the balance sheet
 ```
 
 
@@ -66,15 +64,15 @@ pension_eqs <- sfcr_set(
   #Adfærdsliginger
   Yd_b ~ W*N + r[-1]*Ms[-1] - T_b - Ss,
   Yd_al ~ DP - T_al,
-  Yd_pen ~ FP - T_pen, #Forskellige skatterater? eller skal en skattesats ganges på?
+  Yd_pen ~ FP - T_pen, 
   Yd ~ Yd_b + Yd_al+ Yd_pen,
  
   FP ~ tau * W * Pen, #Folkepension. Tau ganges på lønraten for at få en sammenhæng mellem indkomst for de tre medtagne grupper. 
-  Ss ~ gamma * Yd_b,
-  DP ~ tau2 * W * Ul,   
+  Ss ~ gamma * (W*N), # social sikring - en andel af den disponible indkomst fra beskæftigede går til social sikring
+  DP ~ tau2 * W * Ul, #Dagpenge
  
   #Skatter
-  T_b ~ theta1 * Y, 
+  T_b ~ theta1 * (W*N+r[-1]*Ms[-1] - Ss), 
   T_al ~ theta2 * DP,
   T_pen ~ theta3 * FP,
   T ~ T_b + T_al+ T_pen,
@@ -97,54 +95,50 @@ pension_eqs <- sfcr_set(
   M ~ M_b + M_al + M_pen,
   
   #Ændringer i stocks
- # Ms ~ Ms[-1] + (M - M[-1]), #skal sidste parentes med?
+ # Ms ~ Ms[-1] + (M - M[-1]), #hidden equation
   Ms ~ Ms[-1]+(G+r[-1]*Ms[-1]+FP+DP)- (T+Ss)
 )
 ```
 
 
 ```{r}
-#sfcr_sankey(tfm_pension, pension)
-# Set values for the exogenous variables and the parameters
-
 pension_ext <- sfcr_set(
   # Exogenous
   
-  r ~ 0.025,
-  G ~ 20,
-  theta1 ~ 0.4, 
-  theta2 ~ 0.25,
-  theta3 ~ 0.15,
-  tau ~ 0.8, #Forbrugsudglattende. Når W og tau har samme størrelse (1). Tau er dog mindre end 1, hvorfor forbruget for pensionister ikke udglattes over livsperioden.
-  tau2 ~ 0.6, #kompensationsgrad - 60%
-  beta ~ 0.7, #andel af arbejdsstyrken ud af befolkningen. 
-  gamma ~ 0.2, #procentdel af disponibel indkomst til ss
-  pr ~ 1, #Hvis produktiviteten steg, samtidigt med færre hænder, kan man risikere, at man rent faktisk kan producere mere. Her er det dog lidt det modsatte. Hvis man endogeniserer produktiviteten i modellen, vil man kunne diskutere, hvordan produktiviteten påvirkes af den demografiske udvikling.
-  W ~ 1,
-  Pop ~ 100, # Samlede befolkning
+  r ~ 0.025, #rente
+  G ~ 10, #offentligt forbrug
+  theta1 ~ 0.4, #skattesats for beskæftigede
+  theta2 ~ 0.25, #skattesats for arbejdsløse
+  theta3 ~ 0.15, #skattesats for pensionister
+  tau ~ 0.7, #kompensationsgrad for folkepension
+  tau2 ~ 0.65, #kompensationsgrad for dagpenge
+  beta ~ 0.75, #andel af arbejdsstyrken ud af befolkningen
+  gamma ~ 0.2, #procentdel af disponibel indkomst for beskæftigede til social sikring.
+  pr ~ 1, #produktivitet
+  W ~ 1, #lønrate
+  Pop ~ 150, # Samlede befolkning
   
   # Parameters
   
-  alpha1_b ~ 0.6,
-  alpha2_b ~ 0.4,
-  alpha1_al ~ 0.4,
-  alpha2_al ~ 0.6,
-  alpha1_pen ~ 0.6,
-  alpha2_pen ~ 0.4
+  alpha1_b ~ 0.6, #forbrugstilbøjelighed for beskæftigede ud af disponibel indkomst
+  alpha2_b ~ 0.4, #forbrugstilbøjelighed for beskæftigede ud af formue
+  alpha1_al ~ 0.9, #forbrugstilbøjelighed for arbejdsløse ud af disponibel indkomst
+  alpha2_al ~ 0.1, #forbrugstilbøjelighed for arbejdsløse ud af formue
+  alpha1_pen ~ 0.9, #forbrugstilbøjelighed for pensionister ud af disponibel indkomst
+  alpha2_pen ~ 0.1 #forbrugstilbøjelighed for pensionister ud af formue
 )
 
 #Set initial values
 
 pension_initial <- sfcr_set(
-  M_b ~ 21.62,
-  M_al ~ 0, #arbejdsløse og pensionister forbruger alt, hvorfor de ingen opsparing har.
-  M_pen ~ 0,
-  Ms ~ 21.62,
-  V_b ~ 21.62,
-  V_al ~ 0, # ingen formue, da de forbruger alt.
-  V_pen ~ 0
+  M_b ~ 21.62, #initial pengebeholdning for beskæftigede
+  M_al ~ 0, #arbejdsløse har en initial pengebeholdning på 0
+  M_pen ~ 0, #pensionister har en initial pengebeholdning på 0
+  Ms ~ 21.62, #samlet pengebeholdning
+  V_b ~ 21.62, #formue for beskæftigede
+  V_al ~ 0, # arbejdsløse har en initial formue på 0
+  V_pen ~ 0 # pensionister har en initial formue på 0
   
-  #staten printer penge for at finansiere sit underskud. 
 )
 ```
 
@@ -177,19 +171,17 @@ sfcr_validate(
   which = "tfm"
 )
 
-plot(pension$Y)
+# Baseline scenarie
+plot(pension$period, pension$Y, type = "l", lty = 1, main = "Baseline scenarie - BNP", xlab = "Perioder, tid", ylab= "BNP")
 ```
 
 
 ```{r}
-
-#### SCENARIO
-
-# Create a scenario where the interest rate increases from 0.025 to 0.035
+#### SCENARIO 1
 
 shock <- sfcr_shock(
   variables = sfcr_set(
-    beta ~ 0.6 #arbejdsstyrkens andel falder fra 0,7 til 0,6
+    beta ~ 0.65 #arbejdsstyrkens andel falder fra 0,75 til 0,65
   ),
   start = 20,
   end = 100
@@ -203,25 +195,100 @@ pc1 <- sfcr_scenario(
   periods = 100
 )
 
+pc1$MsY <- pc1$Ms/pc1$Y #her konstrueres gælden ift. Y
 
-pc1$MsY <- pc1$Ms/pc1$Y #her konstrueres gælden over for Y
+pc1$PenPop <- pc1$Pen/pc1$Pop #Pensionisters andel ud af den samlede population
+
+#Tabel 1
+pc1 %>%
+  filter(period %in% c(3, 21, 25, 50, 75, 90, 100)) %>%
+  select(period, G, Y, Yd, C, Ms, MsY, PenPop) %>%
+  t() %>%
+  round(digits = 3)
 
 
 pc1_long <- pc1 %>%
   pivot_longer(cols = -period)
 
-#Figure 4.3 (if you change lambda1 ~ 5 to a lower number you get 
-# the fluctuations from the book, but lower share of BV)
+#PLOTS 
+pc1_long %>%
+  filter(name %in% c("Yd_b", "Yd_al", "Yd_pen")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line(aes(linetype = name)) +
+  labs(title = "Udviklingen af disponibel indkomst")
+
+pc1_long %>%
+  filter(name %in% c("DP", "FP")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line(aes(linetype = name)) +
+  labs(title = "Udviklingen i dagpenge og folkepension")
 
 pc1_long %>%
   filter(name %in% c("MsY")) %>%
   ggplot(aes(x = period, y = value)) +
   geom_line() +
   facet_wrap(~ name, scales = 'free_y') +
-  labs(title = "Y og C")
+  labs(title = "Gældsrate")
+
+pc1_long %>%
+  filter(name %in% c("Y", "Ms")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line() +
+  facet_wrap(~ name, scales = 'free_y') +
+  labs(title = "Udviklingen i gælden og Y")
+
+```
+```{r}
+#### SCENARIO 2
+
+# OBS: For at opnå samme grafer som i det afleverede dokument, skal den initiale værdi af beta ændres til 0,65. Det gøres for at få effekten af en skattesats, efter en ændring af den demografiske sammensætning har fundet sted. Grafernes forløb er dog det samme.
+
+shock1 <- sfcr_shock(
+  variables = list(
+   # beta ~ 0.65, #arbejdsstyrkens andel falder fra 0,75 til 0,65
+    theta1 ~ 0.5 #skattesatsen for de beskæftigede stiger fra 0,4 til 0,5
+  ),
+  start = 20,
+  end = 100
+)
+
+# Create the scenario where the shock takes place
+
+pc2 <- sfcr_scenario(
+  baseline = pension,
+  scenario = shock1,
+  periods = 100
+)
+
+pc2_long <- pc2 %>%
+  pivot_longer(cols = -period)
+
+#PLOTS
+pc2_long %>%
+  filter(name %in% c("Yd", "C")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line(aes(linetype = name)) +
+  labs(title = "Ændringen i disponibel indkomst, forbrug og BNP")
+
+pc2_long %>%
+  filter(name %in% c("Y")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line(aes(linetype = name)) +
+  labs(title = "Udviklingen i den økonomiske vækst")
+
+pc2$MsY <- pc2$Ms/pc2$Y # Gældsraten ud af Y
+
+pc2_long <- pc2 %>%
+  pivot_longer(cols = -period)
+
+pc2_long %>%
+  filter(name %in% c("Ms", "MsY")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line() +
+  facet_wrap(~ name, scales = 'free_y') +
+  labs(title = "Gæld og Gældsrate")
 
 ```
 
 
-```
 
