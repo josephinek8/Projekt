@@ -38,6 +38,7 @@ tfm_pension <- sfcr_matrix(
   c("Pension payouts", pen = "+FP", g = "-FP"),
   c("Contributions to social security", b = "-Ss", g = "+Ss"), #ATP
   c("Unemployment benefits", al = "+DP", g = "-DP"),
+  c("Healthcare costs", b = "+S_b", al = "+S_al", pen = "+S_pen", g = "-Sum_s"),
   c("Tax on Income", b = "-T_b", g = "+T_b"), 
   c("Tax on Pension", pen = "-T_pen", g = "+T_pen"),
   c("Tax on Unemployment benefits", al = "-T_al", g = "+T_al"),
@@ -73,6 +74,12 @@ pension_eqs <- sfcr_set(
   FP ~ tau * W * Pen, #Folkepension. Tau ganges på lønraten for at få en sammenhæng mellem indkomst for de tre medtagne grupper. 
   Ss ~ gamma * (W*N), # social sikring - en andel af den disponible indkomst fra beskæftigede går til social sikring
   DP ~ tau2 * W * Ul, #Dagpenge
+  
+  #Sundhedsudgifter
+  S_b ~ omega_b*(S*N),
+  S_al ~ omega_al*(S*Ul),
+  S_pen ~ omega_pen *(S*Pen),
+  Sum_s ~ S_b+S_al+S_pen,
  
   #Skatter
   T_b ~ theta1 * (W*N+r[-1]*Bb[-1] - Ss), #ændret til bills
@@ -101,7 +108,7 @@ pension_eqs <- sfcr_set(
   
   #Ændringer i stocks
  # Ms ~ Ms[-1] + (M - M[-1]), #hidden equation
-  B ~ B[-1]+(G+r[-1]*B[-1]+FP+DP)- (T+r[-1]*Bcb+Ss),
+  B ~ B[-1]+(G+r[-1]*B[-1]+FP+DP+Sum_s)- (T+r[-1]*Bcb+Ss),
  Ms ~ Ms[-1]+(Bcb-Bcb[-1]),
  Bcb ~ B-Bb-Bpen,
  
@@ -126,6 +133,7 @@ pension_ext <- sfcr_set(
   pr ~ 1, #produktivitet
   W ~ 1, #lønrate
   Pop ~ 150, # Samlede befolkning
+  S~1,
   
   # Parameters
   
@@ -140,7 +148,10 @@ pension_ext <- sfcr_set(
   lambda2_b ~ 0.01,
   lambda0_pen ~ 0.635,
   lambda1_pen ~ 5,
-  lambda2_pen ~ 0.01
+  lambda2_pen ~ 0.01,
+  omega_b ~ 0.2,
+  omega_al ~ 0.3,
+  omega_pen ~ 0.5
 )
 
 #Set initial values
