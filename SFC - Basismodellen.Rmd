@@ -32,7 +32,7 @@ tfm_pension <- sfcr_matrix(
   c("Consumption", b = "-C_b", al="-C_al", pen="-C_pen", p = "+C"),
   c("Government Expenditure", p = "+G", g = "-G"),
   c("Income = GDP", b = "+Y", p = "-Y"),
-  c("Interest on Loans/Public Debt", g = "-r[-1]*Ms[-1]", b = "+r[-1]*Ms[-1]"), 
+  c("Interest on Loans/Public Debt", g = "-r[-1]*Ms[-1]", b = "+r[-1]*M_b[-1]", al= "+r[-1]*M_al[-1]", pen="+r[-1]*M_pen[-1]"), #tilføjet og ændret pengebeholdning tilsvarende til den givne befolkningsgruppe
   c("Pension payouts", pen = "+FP", g = "-FP"),
   c("Contributions to social security", b = "-Ss", g = "+Ss"), #ATP
   c("Unemployment benefits", al = "+DP", g = "-DP"),
@@ -62,9 +62,9 @@ pension_eqs <- sfcr_set(
   Y ~ C + G,
   
   #Adfærdsliginger
-  Yd_b ~ W*N + r[-1]*Ms[-1] - T_b - Ss,
-  Yd_al ~ DP - T_al,
-  Yd_pen ~ FP - T_pen, 
+  Yd_b ~ W*N + r[-1]*M_b[-1] - T_b - Ss, #ændret fra M_s til M_b
+  Yd_al ~ DP +r[-1]*M_al[-1]- T_al,
+  Yd_pen ~ FP + r[-1]*M_pen[-1] - T_pen, 
   Yd ~ Yd_b + Yd_al+ Yd_pen,
  
   FP ~ tau * W * Pen, #Folkepension. Tau ganges på lønraten for at få en sammenhæng mellem indkomst for de tre medtagne grupper. 
@@ -72,9 +72,9 @@ pension_eqs <- sfcr_set(
   DP ~ tau2 * W * Ul, #Dagpenge
  
   #Skatter
-  T_b ~ theta1 * (W*N+r[-1]*Ms[-1] - Ss), 
-  T_al ~ theta2 * DP,
-  T_pen ~ theta3 * FP,
+  T_b ~ theta1 * (W*N+r[-1]*M_b[-1] - Ss), #ændret M_s--> M_b
+  T_al ~ theta2 * (DP+ r[-1]*M_al[-1]), #tilføjet led
+  T_pen ~ theta3 * (FP + r[-1]*M_pen[-1]), #tilføjet led
   T ~ T_b + T_al+ T_pen,
   
   #Forbrug
