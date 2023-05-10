@@ -256,6 +256,13 @@ pc1_long %>%
   facet_wrap(~ name, scales = 'free_y') +
   labs(title = "Udviklingen i gælden og Y")
 
+pc1_long %>%
+  filter(name %in% c("Ms", "B")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line() +
+  facet_wrap(~ name, scales = 'free_y') +
+  labs(title = "Udviklingen i gælden og Y")
+
 ```
 ```{r}
 #### SCENARIO 2
