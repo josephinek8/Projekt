@@ -352,6 +352,13 @@ pc2_long %>%
   labs(title = "Gæld og Gældsrate")
 
 pc2_long %>%
+  filter(name %in% c("BY")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line() +
+  facet_wrap(~ name, scales = 'free_y') +
+  labs(title = "Gældsrate")
+
+pc2_long %>%
   filter(name %in% c("N", "Ul", "Pen")) %>%
   ggplot(aes(x = period, y = value)) +
   geom_line() +
