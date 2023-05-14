@@ -65,7 +65,7 @@ pension_eqs <- sfcr_set(
   Y ~ C + G,
   
   #Definition af offentligt forbrug/sundhedsudgifter
-  G ~ omega_b*N+omega_al*Ul+omega_pen*Pen,
+  G ~ 0.05*N+0.08*Ul+0.1*Pen, #0.12, 0.3, 0.42
   
   #Adfærdsliginger
   Yd_b ~ W*N + r[-1]*Bb[-1] - T_b - Ss, #ændret til bills
@@ -126,7 +126,7 @@ pension_ext <- sfcr_set(
   tau2 ~ 0.65, #kompensationsgrad for dagpenge
   beta ~ 0.75, #andel af arbejdsstyrken ud af befolkningen
   gamma ~ 0.2, #procentdel af disponibel indkomst for beskæftigede til social sikring.
-  pr ~ 1, #produktivitet
+  pr ~ 1, #produktivitet (1)
   W ~ 1, #lønrate
   Pop ~ 150, # Samlede befolkning
   
@@ -136,17 +136,17 @@ pension_ext <- sfcr_set(
   alpha2_b ~ 0.4, #forbrugstilbøjelighed for beskæftigede ud af formue
   alpha1_al ~ 0.9, #forbrugstilbøjelighed for arbejdsløse ud af disponibel indkomst
   alpha2_al ~ 0.1, #forbrugstilbøjelighed for arbejdsløse ud af formue
-  alpha1_pen ~ 0.9, #forbrugstilbøjelighed for pensionister ud af disponibel indkomst
-  alpha2_pen ~ 0.1, #forbrugstilbøjelighed for pensionister ud af formue
+  alpha1_pen ~ 0.7, #forbrugstilbøjelighed for pensionister ud af disponibel indkomst
+  alpha2_pen ~ 0.3, #forbrugstilbøjelighed for pensionister ud af formue
   lambda0_b ~ 0.635,
   lambda1_b ~ 5,
   lambda2_b ~ 0.01,
   lambda0_pen ~ 0.635,
   lambda1_pen ~ 5,
   lambda2_pen ~ 0.01,
-  omega_b ~ 0.2,
-  omega_al ~ 0.3,
-  omega_pen ~ 0.5
+  #omega_b ~ 0.2,
+  #omega_al ~ 0.3,
+  #omega_pen ~ 0.5
 )
 
 #Set initial values
@@ -163,7 +163,7 @@ pension_initial <- sfcr_set(
   Bb ~ 60,
   Bpen ~ 10,
   Bcb ~ 20,
-  G ~ 30 #10
+  G ~ 10 #30
 )
 ```
 
@@ -198,6 +198,27 @@ sfcr_validate(
 
 # Baseline scenarie
 plot(pension$period, pension$Y, type = "l", lty = 1, main = "Baseline scenarie - BNP", xlab = "Perioder, tid", ylab= "BNP")
+
+shock0 <- sfcr_shock(
+  variables = sfcr_set(
+    beta ~ 0.75 #arbejdsstyrkens andel falder fra 0,75 til 0,65
+  ),
+  start = 20,
+  end = 100
+)
+
+pc0 <- sfcr_scenario(
+  baseline = pension,
+  scenario = shock0 ,
+  periods = 100
+)
+
+pc0 %>%
+  filter(period %in% c(3, 21, 25, 50, 75, 90, 100)) %>%
+  select(period, G, Y, Yd, C, Ms, Pen, Ul,N) %>%
+  t() %>%
+  round(digits = 3)
+
 ```
 
 
@@ -206,7 +227,7 @@ plot(pension$period, pension$Y, type = "l", lty = 1, main = "Baseline scenarie -
 
 shock <- sfcr_shock(
   variables = sfcr_set(
-    beta ~ 0.65 #arbejdsstyrkens andel falder fra 0,75 til 0,65
+    beta ~ 0.72 #arbejdsstyrkens andel falder fra 0,75 til 0,65
   ),
   start = 20,
   end = 100
@@ -220,14 +241,14 @@ pc1 <- sfcr_scenario(
   periods = 100
 )
 
-pc1$MsY <- pc1$Ms/pc1$Y #her konstrueres gælden ift. Y
+pc1$BY <- pc1$B/pc1$Y #her konstrueres gælden ift. Y
 
 pc1$PenPop <- pc1$Pen/pc1$Pop #Pensionisters andel ud af den samlede population
 
 #Tabel 1
 pc1 %>%
   filter(period %in% c(3, 21, 25, 50, 75, 90, 100)) %>%
-  select(period, G, Y, Yd, C, Ms, MsY, Pen,Ul,N) %>%
+  select(period, G, Y, Yd, C, Ms, BY, Pen, PenPop, Ul,N) %>%
   t() %>%
   round(digits = 3)
 
@@ -249,14 +270,14 @@ pc1_long %>%
   labs(title = "Udviklingen i dagpenge og folkepension")
 
 pc1_long %>%
-  filter(name %in% c("MsY")) %>%
+  filter(name %in% c("BY")) %>%
   ggplot(aes(x = period, y = value)) +
   geom_line() +
   facet_wrap(~ name, scales = 'free_y') +
   labs(title = "Gældsrate")
 
 pc1_long %>%
-  filter(name %in% c("Y", "Ms")) %>%
+  filter(name %in% c("Y", "B")) %>%
   ggplot(aes(x = period, y = value)) +
   geom_line() +
   facet_wrap(~ name, scales = 'free_y') +
@@ -276,9 +297,10 @@ pc1_long %>%
   facet_wrap(~ name, scales = 'free_y') +
   labs(title = "G")
 
-pc1_long$test = pc1_long$N+pc1_long$Ul+pc1_long$Pen
 
 ```
+
+
 ```{r}
 #### SCENARIO 2
 
@@ -317,16 +339,23 @@ pc2_long %>%
   geom_line(aes(linetype = name)) +
   labs(title = "Udviklingen i den økonomiske vækst")
 
-pc2$MsY <- pc2$Ms/pc2$Y # Gældsraten ud af Y
+pc2$BY <- pc2$B/pc2$Y # Gældsraten ud af Y
 
 pc2_long <- pc2 %>%
   pivot_longer(cols = -period)
 
 pc2_long %>%
-  filter(name %in% c("Ms", "MsY")) %>%
+  filter(name %in% c("B", "BY")) %>%
   ggplot(aes(x = period, y = value)) +
   geom_line() +
   facet_wrap(~ name, scales = 'free_y') +
   labs(title = "Gæld og Gældsrate")
+
+pc2_long %>%
+  filter(name %in% c("N", "Ul", "Pen")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line() +
+  facet_wrap(~ name, scales = 'free_y') +
+  labs(title = "G")
 
 ```
