@@ -227,7 +227,7 @@ pc0 %>%
 
 shock <- sfcr_shock(
   variables = sfcr_set(
-    beta ~ 0.72 #arbejdsstyrkens andel falder fra 0,75 til 0,65
+    beta ~ 0.65 #arbejdsstyrkens andel falder fra 0,75 til 0,65
   ),
   start = 20,
   end = 100
