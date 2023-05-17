@@ -124,7 +124,7 @@ pension_ext <- sfcr_set(
   theta3 ~ 0.15, #skattesats for pensionister
   tau ~ 0.7, #kompensationsgrad for folkepension
   tau2 ~ 0.65, #kompensationsgrad for dagpenge
-  beta ~ 0.75, #andel af arbejdsstyrken ud af befolkningen
+  beta ~ 0.65, #andel af arbejdsstyrken ud af befolkningen
   gamma ~ 0.2, #procentdel af disponibel indkomst for beskæftigede til social sikring.
   pr ~ 1, #produktivitet (1)
   W ~ 1, #lønrate
@@ -322,6 +322,12 @@ pc2 <- sfcr_scenario(
   scenario = shock1,
   periods = 100
 )
+pc2 %>%
+  filter(period %in% c(3, 21, 25, 50, 75, 90, 100)) %>%
+  select(period, G, Y, Yd, C, BY, T,) %>%
+  t() %>%
+  round(digits = 3)
+
 
 pc2_long <- pc2 %>%
   pivot_longer(cols = -period)
@@ -356,7 +362,10 @@ pc2_long %>%
   ggplot(aes(x = period, y = value)) +
   geom_line() +
   facet_wrap(~ name, scales = 'free_y') +
-  labs(title = "Gældsrate")
+  labs(title = "Gældsrate")+
+  ylab("Monetær værdi")+
+  xlab("Perioder")
+  
 
 pc2_long %>%
   filter(name %in% c("N", "Ul", "Pen")) %>%
@@ -364,5 +373,19 @@ pc2_long %>%
   geom_line() +
   facet_wrap(~ name, scales = 'free_y') +
   labs(title = "G")
+
+pc2_long %>%
+  filter(name %in% c("DP", "FP")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line(aes(linetype = name)) +
+  labs(title = "Udviklingen i dagpenge og folkepension")
+
+pc2_long %>%
+  filter(name %in% c("N", "Ul", "Pen")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line() +
+  facet_wrap(~ name, scales = 'free_y') +
+  labs(title = "G")
+
 
 ```
