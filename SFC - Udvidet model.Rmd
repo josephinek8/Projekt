@@ -124,7 +124,7 @@ pension_ext <- sfcr_set(
   theta3 ~ 0.15, #skattesats for pensionister
   tau ~ 0.7, #kompensationsgrad for folkepension
   tau2 ~ 0.65, #kompensationsgrad for dagpenge
-  beta ~ 0.65, #andel af arbejdsstyrken ud af befolkningen
+  beta ~ 0.75, #andel af arbejdsstyrken ud af befolkningen
   gamma ~ 0.2, #procentdel af disponibel indkomst for beskæftigede til social sikring.
   pr ~ 1, #produktivitet (1)
   W ~ 1, #lønrate
@@ -299,7 +299,7 @@ pc1_long %>%
 
 
 ```
-
+##SE BORT FRA DETTE
 
 ```{r}
 #### SCENARIO 2
