@@ -1,0 +1,286 @@
+---
+title: "SFC - Bachelorprojekt"
+author: "Josephine Kærsgaard"
+date: "2023-06-04"
+output: word_document
+---
+
+```{r}
+library(sfcr)
+library(tidyverse)
+library(tidygraph)
+
+
+#Step 1: Write the balance sheet matrix
+
+bs_pension <- sfcr_matrix(
+  columns = c("Beskæftigede", "Arbejdsløse", "Pensionister", "Production", "Government", "Central Bank"),
+  code = c("b","al","pen", "p", "g", "cb"),
+  c("Money", b = "+M_b", al= "+M_al", pen="+M_pen", cb = "-Ms"),
+  c("Bills", b = "+Bb", pen = "+Bpen", cb="+Bcb", g="-B"),
+  c("Wealth", b = "-V_b", al = "-V_al", pen="-V_pen", g = "+V")
+)
+
+sfcr_matrix_display(bs_pension)
+```
+
+```{r}
+#Step 2_ Write the TFM
+
+tfm_pension <- sfcr_matrix(
+  columns = c("Beskæftigede", "Arbejdsløse", "Pensionister", "Production", "Government", "Central Bank (current)", "Central Bank (capital)"),
+  codes = c("b","al", "pen", "p", "g", "cbc", "cbk"),
+  c("Consumption", b = "-C_b", al="-C_al", pen="-C_pen", p = "+C"),
+  c("Government Expenditure", p = "+G", g = "-G"),
+  c("Income = GDP", b = "+Y", p = "-Y"),
+  c("Interest on Public Debt", g = "-r[-1]*B[-1]", b = "+r[-1]*Bb[-1]", pen="+r[-1]*Bpen[-1]", cbc="+r[-1]*Bcb[-1]"), #tilføjet og ændret pengebeholdning tilsvarende til den givne befolkningsgruppe
+  c("Central Bank profits", cbc = "-r[-1]*Bcb[-1]", g="+r[-1]*Bcb[-1]"),
+  c("Pension payouts", pen = "+FP", g = "-FP"),
+  c("Contributions to social security", b = "-Ss", g = "+Ss"), #ATP
+  c("Unemployment benefits", al = "+DP", g = "-DP"),
+  c("Tax on Income", b = "-T_b", g = "+T_b"), 
+  c("Tax on Pension", pen = "-T_pen", g = "+T_pen"),
+  c("Tax on Unemployment benefits", al = "-T_al", g = "+T_al"),
+  c("Change in Money", b = "-(M_b - M_b[-1])", al="-(M_al - M_al[-1])", pen = "-(M_pen- M_pen[-1])", cbk = "(Ms - Ms[-1])"),
+  c("Change in Bills", b = "-(Bb-Bb[-1])", pen = "-(Bpen-Bpen[-1])", g= "(B-B[-1])", cbk = "-(Bcb-Bcb[-1])")
+)
+
+sfcr_matrix_display(tfm_pension)
+```
+
+```{r}
+# Write the system of equations
+
+pension_eqs <- sfcr_set(
+
+  #Definition af befolkning, arbejdsløse m.m
+  Lf ~ beta * Pop, #arbejdsstyrken
+  N ~ Y/pr, # efterspørgslen efter arbejdskraft. 
+  Ul ~ Lf - N, #Det faktiske antal af arbejdsløse af den samlede arbejdsstyrke
+  Pen ~ Pop - Lf, #andelen af pensionister
+  
+  #Regnskabsidentiteter
+  Y ~ C + G,
+  
+  #Definition af offentligt forbrug/sundhedsudgifter
+  G ~ 0.05*N+0.08*Ul+0.1*Pen, #0.12, 0.3, 0.42
+  
+  #Adfærdsliginger
+  Yd_b ~ W*N + r[-1]*Bb[-1] - T_b - Ss, 
+  Yd_al ~ DP - T_al, 
+  Yd_pen ~ FP + r[-1]*Bpen[-1] - T_pen, 
+  Yd ~ Yd_b + Yd_al+ Yd_pen,
+ 
+  FP ~ tau * W * Pen, #Folkepension. Tau ganges på lønraten for at få en sammenhæng mellem indkomst for de tre medtagne grupper. 
+  Ss ~ gamma * (W*N), # social sikring - en andel af den disponible indkomst fra beskæftigede går til social sikring
+  DP ~ tau2 * W * Ul, #Dagpenge
+
+  #Skatter
+  T_b ~ theta1 * (W*N+r[-1]*Bb[-1] - Ss), 
+  T_al ~ theta2 * (DP), 
+  T_pen ~ theta3 * (FP + r[-1]*Bpen[-1]),
+  T ~ T_b + T_al+ T_pen,
+  
+  #Forbrug
+  C_b ~ alpha1_b * Yd_b + alpha2_b * V_b[-1],
+  C_al ~ alpha1_al * Yd_al + alpha2_al * V_al[-1],
+  C_pen ~ alpha1_pen * Yd_pen + alpha2_pen * V_pen[-1],
+  C ~ C_b + C_al + C_pen,
+  
+  
+  #Formue
+  V_b ~ V_b[-1] + Yd_b - C_b,
+  V_al ~ V_al[-1] + Yd_al - C_al,
+  V_pen ~ V_pen[-1] + Yd_pen - C_pen,
+  V ~ V_b + V_al + V_pen, 
+  Bb ~ V_b * (lambda0_b + lambda1_b * r - lambda2_b * (Yd_b/V_b)),
+  M_b ~ V_b - Bb,
+  Bpen ~ V_pen * (lambda0_pen + lambda1_pen * r - lambda2_pen * (Yd_pen/V_pen)),
+  M_pen ~ V_pen - Bpen,
+  M_al ~ V_al, 
+  M ~ M_b + M_al + M_pen,
+  
+  #Ændringer i stocks
+  B ~ B[-1]+(G+r[-1]*B[-1]+FP+DP)- (T+r[-1]*Bcb+Ss),
+ Ms ~ Ms[-1]+(Bcb-Bcb[-1]),
+ Bcb ~ B-Bb-Bpen,
+ 
+ 
+)
+```
+
+
+```{r}
+pension_ext <- sfcr_set(
+  # Exogenous
+  
+  r ~ 0.025, #rente
+  #G ~ 10, #offentligt forbrug
+  theta1 ~ 0.4, #skattesats for beskæftigede
+  theta2 ~ 0.25, #skattesats for arbejdsløse
+  theta3 ~ 0.15, #skattesats for pensionister
+  tau ~ 0.7, #kompensationsgrad for folkepension
+  tau2 ~ 0.65, #kompensationsgrad for dagpenge
+  beta ~ 0.75, #andel af arbejdsstyrken ud af befolkningen
+  gamma ~ 0.2, #procentdel af disponibel indkomst for beskæftigede til social sikring.
+  pr ~ 1, #produktivitet (1)
+  W ~ 1, #lønrate
+  Pop ~ 150, # Samlede befolkning
+  
+  # Parameters
+  
+  alpha1_b ~ 0.6, #forbrugstilbøjelighed for beskæftigede ud af disponibel indkomst
+  alpha2_b ~ 0.4, #forbrugstilbøjelighed for beskæftigede ud af formue
+  alpha1_al ~ 0.9, #forbrugstilbøjelighed for arbejdsløse ud af disponibel indkomst
+  alpha2_al ~ 0.1, #forbrugstilbøjelighed for arbejdsløse ud af formue
+  alpha1_pen ~ 0.7, #forbrugstilbøjelighed for pensionister ud af disponibel indkomst
+  alpha2_pen ~ 0.3, #forbrugstilbøjelighed for pensionister ud af formue
+  lambda0_b ~ 0.635,
+  lambda1_b ~ 5,
+  lambda2_b ~ 0.01,
+  lambda0_pen ~ 0.635,
+  lambda1_pen ~ 5,
+  lambda2_pen ~ 0.01,
+  #omega_b ~ 0.2,
+  #omega_al ~ 0.3,
+  #omega_pen ~ 0.5
+)
+
+#Set initial values
+
+pension_initial <- sfcr_set(
+  M_b ~ 15, #initial pengebeholdning for beskæftigede
+  M_al ~ 0, #arbejdsløse har en initial pengebeholdning på 0
+  M_pen ~ 5, #pensionister har en initial pengebeholdning på 0
+  Ms ~ 20, #samlet pengebeholdning
+  V_b ~ 75, #formue for beskæftigede
+  V_al ~ 0, # arbejdsløse har en initial formue på 0
+  V_pen ~ 15,# pensionister har en initial formue på 0
+  B ~ 90,
+  Bb ~ 60,
+  Bpen ~ 10,
+  Bcb ~ 20,
+  G ~ 10 
+)
+```
+
+
+```{r}
+# Simulate the baseline model
+
+pension <- sfcr_baseline(
+  equations = pension_eqs,
+  external = pension_ext,
+  initial = pension_initial,
+  periods = 100
+)
+```
+
+
+```{r}
+# We check the consistency of the model using the balance sheet
+
+sfcr_validate(
+  matrix = bs_pension,
+  baseline = pension,
+  which = "bs")
+
+# We check the consistency of the model using the TFM
+
+sfcr_validate(
+  matrix = tfm_pension,
+  baseline = pension,
+  which = "tfm"
+)
+
+# Baseline scenarie
+plot(pension$period, pension$Y, type = "l", lty = 1, main = "Baseline scenarie - BNP", xlab = "Perioder, tid", ylab= "BNP")
+
+```
+
+SCENARIE 1: Stød foretages til beta-parameteren, der illustrerer arbejdsstyrkens andel af befolkningen, fra 0,75 til 0,65.
+
+```{r}
+#### SCENARIO 1
+
+shock <- sfcr_shock(
+  variables = sfcr_set(
+    beta ~ 0.65 #arbejdsstyrkens andel falder fra 0,75 til 0,65
+  ),
+  start = 20,
+  end = 100
+)
+
+# Create the scenario where the shock takes place
+
+pc1 <- sfcr_scenario(
+  baseline = pension,
+  scenario = shock,
+  periods = 100
+)
+
+pc1$BY <- pc1$B/pc1$Y #her konstrueres gælden ift. Y
+
+pc1$PenPop <- pc1$Pen/pc1$Pop #Pensionisters andel ud af den samlede population
+
+#Tabel 1
+pc1 %>%
+  filter(period %in% c(3, 21, 25, 50, 75, 90, 100)) %>%
+  select(period, G, Y, Yd, C, Ms, BY, Pen, PenPop, Ul,N) %>%
+  t() %>%
+  round(digits = 3)
+
+
+ pc1_long <- pc1 %>%
+  pivot_longer(cols = -period)
+
+#PLOTS 
+ 
+#Disponible indkomster
+pc1_long %>%
+  filter(name %in% c("Yd_b", "Yd_al", "Yd_pen")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line(aes(linetype = name)) +
+  labs(title = "Udviklingen af disponibel indkomst")
+
+#Dagpenge og folkepension
+pc1_long %>%
+  filter(name %in% c("DP", "FP")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line(aes(linetype = name)) +
+  labs(title = "Udviklingen i dagpenge og folkepension")
+
+#Gældsratio
+pc1_long %>%
+  filter(name %in% c("BY")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line() +
+  facet_wrap(~ name, scales = 'free_y') +
+  labs(title = "Gældsrate")
+
+#Y og bills
+pc1_long %>%
+  filter(name %in% c("Y", "B")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line() +
+  facet_wrap(~ name, scales = 'free_y') +
+  labs(title = "Udviklingen i gælden og Y")
+
+#Sundhedsydelser
+pc1_long %>%
+  filter(name %in% c("G")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line() +
+  facet_wrap(~ name, scales = 'free_y') +
+  labs(title = "G")
+
+#Antallet af beskæftigede, arbejdsløse og pensionister
+pc1_long %>%
+  filter(name %in% c("N", "Ul", "Pen")) %>%
+  ggplot(aes(x = period, y = value)) +
+  geom_line() +
+  facet_wrap(~ name, scales = 'free_y') +
+  labs(title = "G")
+
+
+```
